@@ -98,7 +98,7 @@ jobs:
           REGISTRY: ${{ env.REGISTRY }}
         run: |
           SSH_PORT_VALUE="${SSH_PORT:-22}"
-          ssh -p "$SSH_PORT_VALUE" "$SSH_USER@$SSH_HOST" bash -s << EOF
+          ssh -p "$SSH_PORT_VALUE" "$SSH_USER@$SSH_HOST" bash << EOF
             # Логин в GitHub Container Registry
             echo "$GITHUB_TOKEN" | docker login $REGISTRY -u $GITHUB_ACTOR --password-stdin
             

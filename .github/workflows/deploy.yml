@@ -77,9 +77,19 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
 
+      - name: Set image tag
+        id: tag
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.ref_name }}-${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Deploy to server
         env:
           IMAGE_NAME_FULL: ${{ env.REGISTRY }}/${{ steps.image.outputs.image_name }}
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
@@ -88,7 +98,7 @@ jobs:
           REGISTRY: ${{ env.REGISTRY }}
         run: |
           SSH_PORT_VALUE="${SSH_PORT:-22}"
-          ssh -p "$SSH_PORT_VALUE" "$SSH_USER@$SSH_HOST" bash -s << EOF
+          ssh -p "$SSH_PORT_VALUE" "$SSH_USER@$SSH_HOST" bash << EOF
             # Логин в GitHub Container Registry
             echo "$GITHUB_TOKEN" | docker login $REGISTRY -u $GITHUB_ACTOR --password-stdin
             
@@ -96,20 +106,17 @@ jobs:
             docker stop time-server-api 2>/dev/null || true
             docker rm time-server-api 2>/dev/null || true
             
-            # Используем latest тег для main ветки (как в metadata-action)
-            IMAGE_TAG_TO_PULL="${{ github.ref_name == 'main' && 'latest' || format('{0}-{1}', github.ref_name, github.sha) }}"
-            
-            echo "Pulling image: $IMAGE_NAME_FULL:$IMAGE_TAG_TO_PULL"
+            echo "Pulling image: $IMAGE_NAME_FULL:$IMAGE_TAG"
             
             # Скачиваем новый образ
-            docker pull $IMAGE_NAME_FULL:$IMAGE_TAG_TO_PULL
+            docker pull $IMAGE_NAME_FULL:$IMAGE_TAG
             
             # Запускаем новый контейнер
             docker run -d \\
               --name time-server-api \\
               --restart unless-stopped \\
               -p 8001:8000 \\
-              $IMAGE_NAME_FULL:$IMAGE_TAG_TO_PULL
+              $IMAGE_NAME_FULL:$IMAGE_TAG
             
             # Ждем немного для запуска
             sleep 3

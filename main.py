@@ -18,3 +18,16 @@ async def get_current_time():
         "timestamp": current_time.timestamp()
     }
 
+
+@app.get("/date")
+async def get_current_date():
+    """Возвращает текущую дату сервера"""
+    current_date = datetime.now()
+    return {
+        "date": current_date.date().isoformat(),
+        "year": current_date.year,
+        "month": current_date.month,
+        "day": current_date.day,
+        "weekday": current_date.strftime("%A")
+    }
+
